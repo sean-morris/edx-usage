@@ -5,9 +5,10 @@ from datetime import date
 
 BASE_DIR = Path(__file__).parent.parent
 OUTPUT_DIR = BASE_DIR / "output"
+DATA_DIR = BASE_DIR / "data"
 DASHBOARD_DIR = BASE_DIR / "docs"
 
-monthly = pd.read_csv(OUTPUT_DIR / "monthly_activity.csv")
+monthly = pd.read_csv(DATA_DIR / "monthly_activity.csv")
 activity = pd.read_csv(OUTPUT_DIR / "user_activity.csv")
 
 monthly_json = json.dumps(monthly.to_dict(orient="records"))

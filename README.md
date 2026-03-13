@@ -14,6 +14,8 @@ scripts/
   monthly_activity.py   # aggregates user_activity.csv by month -> output/monthly_activity.csv
   build_dashboard.py    # renders output CSVs into dashboard/index.html
   edx.py                # JupyterHub API helper
+data/
+  monthly_activity.csv  # persistent historical record, committed and upserted each run
 output/                 # generated, not committed
 docs/index.html         # generated static dashboard (served via GitHub Pages)
 ```

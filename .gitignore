@@ -6,6 +6,8 @@ __pycache__/
 # Intermediate output files (regenerated each run, not needed in repo)
 output/
 
+# data/ is intentionally tracked - it holds the persistent monthly_activity.csv
+
 # Environment
 .env
 *.env
