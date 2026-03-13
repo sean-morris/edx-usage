@@ -15,7 +15,7 @@ scripts/
   build_dashboard.py    # renders output CSVs into dashboard/index.html
   edx.py                # JupyterHub API helper
 output/                 # generated, not committed
-dashboard/index.html    # generated static dashboard
+docs/index.html         # generated static dashboard (served via GitHub Pages)
 ```
 
 ## Setup

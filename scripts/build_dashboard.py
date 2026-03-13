@@ -5,7 +5,7 @@ from datetime import date
 
 BASE_DIR = Path(__file__).parent.parent
 OUTPUT_DIR = BASE_DIR / "output"
-DASHBOARD_DIR = BASE_DIR / "dashboard"
+DASHBOARD_DIR = BASE_DIR / "docs"
 
 monthly = pd.read_csv(OUTPUT_DIR / "monthly_activity.csv")
 activity = pd.read_csv(OUTPUT_DIR / "user_activity.csv")
@@ -110,5 +110,5 @@ html = f"""<!DOCTYPE html>
 """
 
 DASHBOARD_DIR.mkdir(exist_ok=True)
-(DASHBOARD_DIR / "index.html").write_text(html)
+(DASHBOARD_DIR / "index.html").write_text(html, encoding="utf-8")
 print(f"Dashboard written to {DASHBOARD_DIR / 'index.html'}")
