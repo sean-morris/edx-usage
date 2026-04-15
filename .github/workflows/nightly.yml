@@ -22,10 +22,18 @@ jobs:
           activate-environment: edx-usage
           auto-activate-base: false
 
+      - name: Authenticate to GCP
+        run: |
+          echo '${{ secrets.GCP_SA_KEY }}' > ${HOME}/gcloud-service-key.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=${HOME}/gcloud-service-key.json" >> $GITHUB_ENV
+
       - name: Run pipeline
         shell: bash -el {0}
         env:
           JUPYTERHUB_TOKEN: ${{ secrets.JUPYTERHUB_TOKEN }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
+          BILLING_DATASET: ${{ vars.BILLING_DATASET }}
+          BILLING_TABLE: ${{ vars.BILLING_TABLE }}
         run: python main.py
 
       - name: Commit and push dashboard

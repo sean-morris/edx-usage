@@ -8,6 +8,7 @@ steps = [
     ("Merging IDs across courses...",        SCRIPTS_DIR / "merge_ids.py"),
     ("Fetching JupyterHub activity...",       SCRIPTS_DIR / "merge_activity.py"),
     ("Building monthly activity summary...", SCRIPTS_DIR / "monthly_activity.py"),
+    ("Loading billing data...",              SCRIPTS_DIR / "billing.py"),
     ("Building dashboard...",                SCRIPTS_DIR / "build_dashboard.py"),
 ]
 

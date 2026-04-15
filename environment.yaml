@@ -8,3 +8,5 @@ dependencies:
   - pandas
   - requests
   - python-dotenv
+  - google-cloud-bigquery
+  - db-dtypes

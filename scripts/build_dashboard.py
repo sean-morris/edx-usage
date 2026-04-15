@@ -10,9 +10,28 @@ DASHBOARD_DIR = BASE_DIR / "docs"
 
 monthly = pd.read_csv(DATA_DIR / "monthly_activity.csv")
 activity = pd.read_csv(OUTPUT_DIR / "user_activity.csv")
+billing = pd.read_csv(OUTPUT_DIR / "billing.csv", parse_dates=["date"])
 
 monthly_json = json.dumps(monthly.to_dict(orient="records"))
 activity_json = json.dumps(activity.fillna("none").to_dict(orient="records"))
+
+billing_dates = sorted(billing["date"].dt.strftime("%Y-%m-%d").unique().tolist())
+billing_edx = (
+    billing[billing["service"] == "edx"]
+    .set_index(billing[billing["service"] == "edx"]["date"].dt.strftime("%Y-%m-%d"))["cost"]
+    .reindex(billing_dates, fill_value=0)
+    .tolist()
+)
+billing_otter = (
+    billing[billing["service"] == "otter-service"]
+    .set_index(billing[billing["service"] == "otter-service"]["date"].dt.strftime("%Y-%m-%d"))["cost"]
+    .reindex(billing_dates, fill_value=0)
+    .tolist()
+)
+billing_dates_json = json.dumps(billing_dates)
+billing_edx_json = json.dumps(billing_edx)
+billing_otter_json = json.dumps(billing_otter)
+
 updated = date.today().isoformat()
 
 html = f"""<!DOCTYPE html>
@@ -45,6 +64,11 @@ html = f"""<!DOCTYPE html>
   <div class="card">
     <h2>Monthly Active Users by Course</h2>
     <canvas id="chart"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>Daily Infrastructure Cost (USD)</h2>
+    <canvas id="billing-chart"></canvas>
   </div>
 
   <div class="card">
@@ -83,6 +107,29 @@ html = f"""<!DOCTYPE html>
         responsive: true,
         plugins: {{ legend: {{ position: "top" }} }},
         scales: {{ x: {{ stacked: false }}, y: {{ beginAtZero: true, ticks: {{ precision: 0 }} }} }}
+      }}
+    }});
+
+    // --- Billing chart ---
+    const billingDates = {billing_dates_json};
+    const billingEdx = {billing_edx_json};
+    const billingOtter = {billing_otter_json};
+    new Chart(document.getElementById("billing-chart"), {{
+      type: "bar",
+      data: {{
+        labels: billingDates,
+        datasets: [
+          {{ label: "edx", data: billingEdx, backgroundColor: "#4e79a7", stack: "cost" }},
+          {{ label: "otter-service", data: billingOtter, backgroundColor: "#e15759", stack: "cost" }},
+        ]
+      }},
+      options: {{
+        responsive: true,
+        plugins: {{ legend: {{ position: "top" }} }},
+        scales: {{
+          x: {{ stacked: true }},
+          y: {{ stacked: true, beginAtZero: true, ticks: {{ callback: v => "$" + v.toFixed(0) }} }}
+        }}
       }}
     }});
 
