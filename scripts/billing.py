@@ -40,6 +40,11 @@ ORDER BY 1
 """
 
 client = bigquery.Client(project=PROJECT)
-df = client.query(query).to_dataframe()
-df.to_csv(OUTPUT_PATH, index=False)
-print(f"Billing data written to {OUTPUT_PATH} ({len(df)} rows)")
+try:
+    df = client.query(query).to_dataframe()
+    df.to_csv(OUTPUT_PATH, index=False)
+    print(f"Billing data written to {OUTPUT_PATH} ({len(df)} rows)")
+except Exception as e:
+    print(f"WARNING: Could not fetch billing data: {e}")
+    print("Writing empty billing CSV and continuing.")
+    pd.DataFrame(columns=["date", "service", "cost"]).to_csv(OUTPUT_PATH, index=False)
