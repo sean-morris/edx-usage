@@ -15,19 +15,24 @@ billing = pd.read_csv(OUTPUT_DIR / "billing.csv", parse_dates=["date"])
 monthly_json = json.dumps(monthly.to_dict(orient="records"))
 activity_json = json.dumps(activity.fillna("none").to_dict(orient="records"))
 
-billing_dates = sorted(billing["date"].dt.strftime("%Y-%m-%d").unique().tolist())
-billing_edx = (
-    billing[billing["service"] == "edx"]
-    .set_index(billing[billing["service"] == "edx"]["date"].dt.strftime("%Y-%m-%d"))["cost"]
-    .reindex(billing_dates, fill_value=0)
-    .tolist()
-)
-billing_otter = (
-    billing[billing["service"] == "otter-service"]
-    .set_index(billing[billing["service"] == "otter-service"]["date"].dt.strftime("%Y-%m-%d"))["cost"]
-    .reindex(billing_dates, fill_value=0)
-    .tolist()
-)
+if billing.empty:
+    billing_dates = []
+    billing_edx = []
+    billing_otter = []
+else:
+    billing_dates = sorted(billing["date"].dt.strftime("%Y-%m-%d").unique().tolist())
+    billing_edx = (
+        billing[billing["service"] == "edx"]
+        .set_index(billing[billing["service"] == "edx"]["date"].dt.strftime("%Y-%m-%d"))["cost"]
+        .reindex(billing_dates, fill_value=0)
+        .tolist()
+    )
+    billing_otter = (
+        billing[billing["service"] == "otter-service"]
+        .set_index(billing[billing["service"] == "otter-service"]["date"].dt.strftime("%Y-%m-%d"))["cost"]
+        .reindex(billing_dates, fill_value=0)
+        .tolist()
+    )
 billing_dates_json = json.dumps(billing_dates)
 billing_edx_json = json.dumps(billing_edx)
 billing_otter_json = json.dumps(billing_otter)
