@@ -41,7 +41,7 @@ ORDER BY 1
 
 client = bigquery.Client(project=PROJECT)
 try:
-    df = client.query(query).to_dataframe()
+    df = client.query(query).to_dataframe(create_bqstorage_client=False)
     df.to_csv(OUTPUT_PATH, index=False)
     print(f"Billing data written to {OUTPUT_PATH} ({len(df)} rows)")
 except Exception as e:
