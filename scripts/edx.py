@@ -1,23 +1,19 @@
-import csv
-import json
-import sys
-from datetime import datetime
 import requests
+
 
 def get_users(url, token):
     """
     Fetches user data from the JupyterHub API.
 
     Args:
-        url (str): Hub URL prefix.
-        where (str): Deployment type.
+        url (str): Unused label (kept for call-site compatibility).
         token (str): API token.
 
     Returns:
         list: List of user dicts.
     """
     all_data = []
-    api_url = f'http://edx.datahub.berkeley.edu/hub/api'
+    api_url = 'https://edx.datahub.berkeley.edu/hub/api'
     offset = 0
     while True:
         r = requests.get(

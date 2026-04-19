@@ -12,8 +12,8 @@ from google.cloud import bigquery
 # ---------------------------------------------------------------------------
 
 PROJECT = "data8x-scratch"
-BILLING_DATASET = os.environ.get("BILLING_DATASET", "billing_export")
-BILLING_TABLE = os.environ.get("BILLING_TABLE", "gcp_billing_export_v1_*")
+BILLING_DATASET = os.environ.get("BILLING_DATASET", "costs")
+BILLING_TABLE = os.environ.get("BILLING_TABLE", "gcp_billing_export_v1_018229_5357DC_756F0D")
 
 BASE_DIR = Path(__file__).parent.parent
 OUTPUT_DIR = BASE_DIR / "output"
