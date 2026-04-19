@@ -34,7 +34,8 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
           BILLING_DATASET: costs
           BILLING_TABLE: gcp_billing_export_v1_018229_5357DC_756F0D
-        run: python main.py
+        run: |
+          conda run -n edx-usage python main.py
 
       - name: Commit and push dashboard
         run: |
