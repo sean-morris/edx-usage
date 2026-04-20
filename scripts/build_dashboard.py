@@ -11,9 +11,13 @@ DASHBOARD_DIR = BASE_DIR / "docs"
 monthly = pd.read_csv(DATA_DIR / "monthly_activity.csv")
 activity = pd.read_csv(OUTPUT_DIR / "user_activity.csv")
 billing = pd.read_csv(OUTPUT_DIR / "billing.csv", parse_dates=["date"])
+historical = pd.read_csv(DATA_DIR / "hub_historical_users.csv")
 
 monthly_json = json.dumps(monthly.to_dict(orient="records"))
 activity_json = json.dumps(activity.fillna("none").to_dict(orient="records"))
+historical_months_json = json.dumps(historical["month"].tolist())
+historical_30d_json = json.dumps(historical["active_users_30d"].tolist())
+historical_24h_json = json.dumps(historical["active_users_24h"].tolist())
 
 if billing.empty:
     billing_dates = []
@@ -72,6 +76,11 @@ html = f"""<!DOCTYPE html>
   </div>
 
   <div class="card">
+    <h2>Historical Monthly Active Users (hub-wide, 30-day window)</h2>
+    <canvas id="historical-chart"></canvas>
+  </div>
+
+  <div class="card">
     <h2>Daily Infrastructure Cost (USD)</h2>
     <canvas id="billing-chart"></canvas>
   </div>
@@ -112,6 +121,42 @@ html = f"""<!DOCTYPE html>
         responsive: true,
         plugins: {{ legend: {{ position: "top" }} }},
         scales: {{ x: {{ stacked: false }}, y: {{ beginAtZero: true, ticks: {{ precision: 0 }} }} }}
+      }}
+    }});
+
+    // --- Historical active users chart ---
+    const historicalMonths = {historical_months_json};
+    const historical30d = {historical_30d_json};
+    const historical24h = {historical_24h_json};
+    new Chart(document.getElementById("historical-chart"), {{
+      type: "line",
+      data: {{
+        labels: historicalMonths,
+        datasets: [
+          {{
+            label: "30-day active users",
+            data: historical30d,
+            borderColor: "#4e79a7",
+            backgroundColor: "rgba(78,121,167,0.15)",
+            fill: true,
+            tension: 0.3,
+            pointRadius: 3,
+          }},
+          {{
+            label: "24-hour active users",
+            data: historical24h,
+            borderColor: "#f28e2b",
+            backgroundColor: "rgba(242,142,43,0.1)",
+            fill: false,
+            tension: 0.3,
+            pointRadius: 3,
+          }},
+        ]
+      }},
+      options: {{
+        responsive: true,
+        plugins: {{ legend: {{ position: "top" }} }},
+        scales: {{ y: {{ beginAtZero: true, ticks: {{ precision: 0 }} }} }}
       }}
     }});
 

@@ -31,6 +31,11 @@
   </div>
 
   <div class="card">
+    <h2>Historical Monthly Active Users (hub-wide, 30-day window)</h2>
+    <canvas id="historical-chart"></canvas>
+  </div>
+
+  <div class="card">
     <h2>Daily Infrastructure Cost (USD)</h2>
     <canvas id="billing-chart"></canvas>
   </div>
@@ -71,6 +76,42 @@
         responsive: true,
         plugins: { legend: { position: "top" } },
         scales: { x: { stacked: false }, y: { beginAtZero: true, ticks: { precision: 0 } } }
+      }
+    });
+
+    // --- Historical active users chart ---
+    const historicalMonths = ["2022-12", "2023-01", "2023-02", "2023-03", "2023-04", "2023-05", "2023-06", "2023-07", "2023-08", "2023-09", "2023-10", "2023-11", "2023-12", "2024-01", "2024-02", "2024-03", "2024-04", "2024-05", "2024-06", "2024-07", "2024-08", "2024-09", "2024-10", "2024-11", "2024-12", "2025-01", "2025-02", "2025-03", "2025-04", "2025-05", "2025-06", "2025-07", "2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04"];
+    const historical30d = [27, 18, 19, 20, 11, 0, 6, 17, 9, 10, 16, 6, 5, 9, 15, 69, 114, 146, 218, 253, 263, 236, 204, 172, 150, 148, 175, 181, 137, 124, 70, 8, 14, 192, 195, 158, 140, 134, 132, 103, 9];
+    const historical24h = [2, 2, 6, 4, 0, 0, 2, 4, 2, 4, 4, 4, 3, 4, 3, 16, 12, 14, 19, 27, 28, 19, 17, 18, 13, 16, 19, 16, 15, 11, 4, 5, 6, 27, 17, 17, 15, 14, 15, 16, 1];
+    new Chart(document.getElementById("historical-chart"), {
+      type: "line",
+      data: {
+        labels: historicalMonths,
+        datasets: [
+          {
+            label: "30-day active users",
+            data: historical30d,
+            borderColor: "#4e79a7",
+            backgroundColor: "rgba(78,121,167,0.15)",
+            fill: true,
+            tension: 0.3,
+            pointRadius: 3,
+          },
+          {
+            label: "24-hour active users",
+            data: historical24h,
+            borderColor: "#f28e2b",
+            backgroundColor: "rgba(242,142,43,0.1)",
+            fill: false,
+            tension: 0.3,
+            pointRadius: 3,
+          },
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: "top" } },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
       }
     });
 
