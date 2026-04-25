@@ -82,18 +82,21 @@ if not snapshots.empty and "date" in snapshots.columns:
         latest = prev.iloc[-1]
         summary_running = int(latest["running_servers"]) if pd.notna(latest.get("running_servers")) else 0
 
-# 30-day chart from snapshots
+# 30-day chart: active users from user_activity.csv, concurrent from snapshots
+activity_cols = [c for c in activity.columns if "last activity" in c]
+daily_dates = [(date.today() - timedelta(days=i)).isoformat() for i in range(29, -1, -1)]
+daily_active = []
+for d in daily_dates:
+    count = int((activity[activity_cols] == d).any(axis=1).sum())
+    daily_active.append(count)
+
+# running_servers from snapshots where available, else 0
+snapshot_running = {}
 if not snapshots.empty and "date" in snapshots.columns:
-    recent = snapshots[snapshots["date"] >= cutoff_30d].copy()
-    active_cols = [f"{s} active" for s in SECTIONS if f"{s} active" in recent.columns]
-    recent["total_active"] = recent[active_cols].sum(axis=1) if active_cols else 0
-    daily_dates = recent["date"].tolist()
-    daily_active = recent["total_active"].tolist()
-    daily_running = recent["running_servers"].fillna(0).tolist() if "running_servers" in recent.columns else [0] * len(daily_dates)
-else:
-    daily_dates = []
-    daily_active = []
-    daily_running = []
+    for _, row in snapshots[snapshots["date"] >= cutoff_30d].iterrows():
+        val = row.get("running_servers", 0)
+        snapshot_running[str(row["date"])] = int(val) if pd.notna(val) else 0
+daily_running = [snapshot_running.get(d, 0) for d in daily_dates]
 
 daily_dates_json = json.dumps(daily_dates)
 daily_active_json = json.dumps(daily_active)
@@ -165,6 +168,10 @@ html = f"""<!DOCTYPE html>
     tr:hover td {{ background: #fafafa; }}
     .none {{ color: #bbb; }}
     .sort-arrow {{ font-size: 0.7rem; margin-left: 3px; }}
+    /* 2-column HTML legend */
+    .chart-legend {{ display: grid; grid-template-columns: 1fr 1fr; gap: 0.2rem 1.5rem; margin-bottom: 0.75rem; font-size: 0.8rem; }}
+    .legend-item {{ display: flex; align-items: center; gap: 0.4rem; }}
+    .legend-swatch {{ width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }}
   </style>
 </head>
 <body>
@@ -174,6 +181,7 @@ html = f"""<!DOCTYPE html>
   <!-- 1. Monthly Active Users -->
   <div class="card">
     <h2>Monthly Active Users by Course</h2>
+    <div class="chart-legend" id="chart-legend"></div>
     <canvas id="chart"></canvas>
   </div>
 
@@ -220,6 +228,7 @@ html = f"""<!DOCTYPE html>
   <!-- 5. Billing -->
   <div class="card">
     <h2>Daily Infrastructure Cost (USD)</h2>
+    <div class="chart-legend" id="billing-legend"></div>
     <canvas id="billing-chart"></canvas>
   </div>
 
@@ -260,6 +269,19 @@ html = f"""<!DOCTYPE html>
     const BILLING_PALETTE = {billing_palette_json};
 
     // -----------------------------------------------------------------------
+    // Shared helpers
+    // -----------------------------------------------------------------------
+    function renderLegend(chart, containerId) {{
+      const container = document.getElementById(containerId);
+      container.innerHTML = chart.data.datasets.map(ds =>
+        `<div class="legend-item">
+           <span class="legend-swatch" style="background:${{ds.backgroundColor}}"></span>
+           <span>${{ds.label}}</span>
+         </div>`
+      ).join("");
+    }}
+
+    // -----------------------------------------------------------------------
     // 1. Monthly Active Users — stacked by section, grouped by course
     // -----------------------------------------------------------------------
     const monthlyLabels = monthly.map(r => r["month-year"]);
@@ -274,18 +296,33 @@ html = f"""<!DOCTYPE html>
         }});
       }}
     }}
-    new Chart(document.getElementById("chart"), {{
+    const monthlyChart = new Chart(document.getElementById("chart"), {{
       type: "bar",
       data: {{ labels: monthlyLabels, datasets: monthlyDatasets }},
       options: {{
         responsive: true,
-        plugins: {{ legend: {{ position: "top" }} }},
+        plugins: {{
+          legend: {{ display: false }},
+          tooltip: {{
+            callbacks: {{
+              afterTitle: (items) => {{
+                if (!items.length) return "";
+                const idx = items[0].dataIndex;
+                const total = items[0].chart.data.datasets
+                  .reduce((sum, ds) => sum + (Number(ds.data[idx]) || 0), 0);
+                return `Total: ${{total}} users`;
+              }},
+              label: (item) => `  ${{item.dataset.label}}: ${{Number(item.raw)}} users`,
+            }},
+          }},
+        }},
         scales: {{
           x: {{ stacked: true }},
           y: {{ stacked: true, beginAtZero: true, ticks: {{ precision: 0 }} }}
         }}
       }}
     }});
+    renderLegend(monthlyChart, "chart-legend");
 
     // -----------------------------------------------------------------------
     // 2. Yesterday's Summary
@@ -327,7 +364,7 @@ html = f"""<!DOCTYPE html>
               pointRadius: 3,
             }},
             {{
-              label: "Peak Concurrent Servers",
+              label: "Peak Concurrent Users",
               data: dailyRunning,
               borderColor: "#e15759",
               backgroundColor: "rgba(225,87,89,0.05)",
@@ -389,18 +426,32 @@ html = f"""<!DOCTYPE html>
       backgroundColor: BILLING_PALETTE[i % BILLING_PALETTE.length],
       stack: "cost",
     }}));
-    new Chart(document.getElementById("billing-chart"), {{
+    const billingChart = new Chart(document.getElementById("billing-chart"), {{
       type: "bar",
       data: {{ labels: billingDates, datasets: billingDatasets }},
       options: {{
         responsive: true,
-        plugins: {{ legend: {{ position: "top" }} }},
+        plugins: {{
+          legend: {{ display: false }},
+          tooltip: {{
+            mode: "index",
+            intersect: false,
+            callbacks: {{
+              label: (item) => `  ${{item.dataset.label}}: $${{Number(item.raw).toFixed(2)}}`,
+              footer: (items) => {{
+                const total = items.reduce((sum, item) => sum + (Number(item.raw) || 0), 0);
+                return `Total: $${{total.toFixed(2)}}`;
+              }},
+            }},
+          }},
+        }},
         scales: {{
           x: {{ stacked: true }},
           y: {{ stacked: true, beginAtZero: true, ticks: {{ callback: v => "$" + v.toFixed(2) }} }}
         }}
       }}
     }});
+    renderLegend(billingChart, "billing-legend");
 
     // -----------------------------------------------------------------------
     // 6. Per-Student Table — filterable by course, sortable columns
