@@ -6,33 +6,39 @@ BASE_DIR = Path(__file__).parent.parent
 
 df = pd.read_csv(BASE_DIR / "output" / "user_activity.csv")
 
-courses = {
-    "88.1": "88.1 last activity",
-    "88.2": "88.2 last activity",
-    "88.3": "88.3 last activity",
-}
+SECTIONS = ["88E.1", "88E.2", "88E.3", "88B.1", "88B.2", "88B.3", "88C.1", "88C.2", "88C.3"]
+EXPECTED_COLS = ["month-year"] + [f"{s} users" for s in SECTIONS]
 
-# Current month as "YYYY-MM"
 current_month = date.today().strftime("%Y-%m")
 
-# Count users whose last_activity falls within the current calendar month
 row = {"month-year": current_month}
-for course, col in courses.items():
-    active_this_month = df[df[col].str.startswith(current_month, na=False)]
-    row[f"{course} users"] = len(active_this_month)
+for section in SECTIONS:
+    col = f"{section} last activity"
+    if col in df.columns:
+        row[f"{section} users"] = len(df[df[col].str.startswith(current_month, na=False)])
+    else:
+        row[f"{section} users"] = 0
 
 print(f"Current month ({current_month}): {row}")
 
-# Load the persistent historical record and upsert current month
 data_path = BASE_DIR / "data" / "monthly_activity.csv"
 data_path.parent.mkdir(exist_ok=True)
 
 if data_path.exists():
     history = pd.read_csv(data_path, dtype=str)
+    # Migrate old section names (88.1/2/3 -> 88E.1/2/3)
+    history = history.rename(columns={
+        "88.1 users": "88E.1 users",
+        "88.2 users": "88E.2 users",
+        "88.3 users": "88E.3 users",
+    })
+    # Add any missing new-course columns
+    for col in EXPECTED_COLS[1:]:
+        if col not in history.columns:
+            history[col] = "0"
 else:
-    history = pd.DataFrame(columns=["month-year", "88.1 users", "88.2 users", "88.3 users"])
+    history = pd.DataFrame(columns=EXPECTED_COLS)
 
-# Upsert: replace existing row for this month or append
 history = history[history["month-year"] != current_month]
 history = pd.concat([history, pd.DataFrame([row])], ignore_index=True)
 history = history.sort_values("month-year").reset_index(drop=True)

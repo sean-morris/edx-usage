@@ -24,17 +24,11 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 query = f"""
 SELECT
   DATE(usage_start_time) AS date,
-  CASE
-    WHEN EXISTS (
-      SELECT 1 FROM UNNEST(labels) AS l
-      WHERE l.key = 'workload' AND l.value = 'otter-service'
-    ) THEN 'otter-service'
-    ELSE 'edx'
-  END AS service,
+  service.description AS service,
   ROUND(SUM(cost), 2) AS cost
 FROM `{PROJECT}.{BILLING_DATASET}.{BILLING_TABLE}`
 WHERE DATE(usage_start_time) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
-  AND project.id = '{PROJECT}'
+  AND (project.id = '{PROJECT}' OR project.id IS NULL)
 GROUP BY 1, 2
 ORDER BY 1
 """

@@ -10,6 +10,7 @@ steps = [
     ("Building monthly activity summary...", SCRIPTS_DIR / "monthly_activity.py"),
     ("Loading billing data...",              SCRIPTS_DIR / "billing.py"),
     ("Updating historical user counts...",   SCRIPTS_DIR / "update_historical_users.py"),
+    ("Recording daily snapshot...",          SCRIPTS_DIR / "update_daily_snapshots.py"),
     ("Building dashboard...",                SCRIPTS_DIR / "build_dashboard.py"),
 ]
 

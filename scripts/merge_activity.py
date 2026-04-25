@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 BASE_DIR = Path(__file__).parent.parent
+DATA_DIR = BASE_DIR / "data"
+sys.path.insert(0, str(Path(__file__).parent))
 
 from edx import get_users
 
@@ -15,88 +17,82 @@ TOKEN = os.environ.get("JUPYTERHUB_TOKEN")
 if not TOKEN:
     raise EnvironmentError("JUPYTERHUB_TOKEN environment variable is not set")
 
-# ---------------------------------------------------------------------------
-# 1. Build a lookup: Course Specific Anonymized User ID -> (User ID, course)
-# ---------------------------------------------------------------------------
-courses = {
-    "88.1": BASE_DIR / "88.1ex" / "ids.csv",
-    "88.2": BASE_DIR / "88.2ex" / "ids.csv",
-    "88.3": BASE_DIR / "88.3ex" / "ids.csv",
+SECTIONS = {
+    "88E.1": DATA_DIR / "88.1ex" / "ids.csv",
+    "88E.2": DATA_DIR / "88.2ex" / "ids.csv",
+    "88E.3": DATA_DIR / "88.3ex" / "ids.csv",
+    "88B.1": DATA_DIR / "88.1bx" / "ids.csv",
+    "88B.2": DATA_DIR / "88.2bx" / "ids.csv",
+    "88B.3": DATA_DIR / "88.3bx" / "ids.csv",
+    "88C.1": DATA_DIR / "88.1cx" / "ids.csv",
+    "88C.2": DATA_DIR / "88.2cx" / "ids.csv",
+    "88C.3": DATA_DIR / "88.3cx" / "ids.csv",
 }
 
-course_specific_to_user = {}   # course_specific_anon_id -> (user_id, course)
-
-for course_name, path in courses.items():
+# Build lookup: course_specific_anon_id -> (user_id, section)
+course_specific_to_user = {}
+for section_name, path in SECTIONS.items():
+    if not path.exists():
+        print(f"Skipping {section_name}: {path} not found")
+        continue
     with open(path) as f:
         reader = csv.DictReader(f)
         for row in reader:
             uid = row["User ID"]
             course_specific_id = row["Course Specific Anonymized User ID"]
-            course_specific_to_user[course_specific_id] = (uid, course_name)
+            course_specific_to_user[course_specific_id] = (uid, section_name)
 
 print(f"Loaded {len(course_specific_to_user)} course-specific ID mappings")
 
-# ---------------------------------------------------------------------------
-# 2. Pull JupyterHub users
-# ---------------------------------------------------------------------------
 print("Fetching JupyterHub users...")
 hub_users = get_users("edx", TOKEN)
 print(f"Fetched {len(hub_users)} JupyterHub users")
 
-# ---------------------------------------------------------------------------
-# 3. Match each JupyterHub user to a real User ID + course
-# ---------------------------------------------------------------------------
 records = []
 unmatched = 0
-
 for user in hub_users:
     name = user.get("name")
     last_activity = user.get("last_activity")
     if name in course_specific_to_user:
-        user_id, course = course_specific_to_user[name]
-        records.append({
-            "User ID": user_id,
-            "course": course,
-            "last_activity": last_activity,
-        })
+        user_id, section = course_specific_to_user[name]
+        records.append({"User ID": user_id, "section": section, "last_activity": last_activity})
     else:
         unmatched += 1
 
 print(f"Matched {len(records)} users, {unmatched} unmatched")
 
-# ---------------------------------------------------------------------------
-# 4. Pivot to one row per User ID with last activity per course
-# ---------------------------------------------------------------------------
+ACTIVITY_COLS = [f"{s} last activity" for s in SECTIONS]
 df = pd.DataFrame(records)
 
-pivot = df.pivot_table(
-    index="User ID",
-    columns="course",
-    values="last_activity",
-    aggfunc="max",   # take the most recent activity if duplicates exist
-).reset_index()
+if df.empty:
+    pivot = pd.DataFrame(columns=["User ID"])
+else:
+    pivot = df.pivot_table(
+        index="User ID",
+        columns="section",
+        values="last_activity",
+        aggfunc="max",
+    ).reset_index()
+    pivot.columns.name = None
 
-# Strip time, keep date only
-for col in pivot.columns:
-    if col != "User ID":
-        pivot[col] = pivot[col].apply(lambda x: x[:10] if isinstance(x, str) else x)
+    # Strip time from timestamps, keep date only
+    for col in pivot.columns:
+        if col != "User ID":
+            pivot[col] = pivot[col].apply(lambda x: x[:10] if isinstance(x, str) else x)
 
-pivot.columns.name = None
-pivot = pivot.rename(columns={
-    "88.1": "88.1 last activity",
-    "88.2": "88.2 last activity",
-    "88.3": "88.3 last activity",
-})
+    # Rename section keys to "88X.Y last activity"
+    for section in list(SECTIONS.keys()):
+        new_col = f"{section} last activity"
+        if section in pivot.columns:
+            pivot = pivot.rename(columns={section: new_col})
 
-# Fill missing courses with "none"
-for col in ["88.1 last activity", "88.2 last activity", "88.3 last activity"]:
+for col in ACTIVITY_COLS:
     if col not in pivot.columns:
         pivot[col] = "none"
     else:
         pivot[col] = pivot[col].fillna("none")
 
-# Reorder columns
-pivot = pivot[["User ID", "88.1 last activity", "88.2 last activity", "88.3 last activity"]]
+pivot = pivot[["User ID"] + ACTIVITY_COLS]
 
 output_path = BASE_DIR / "output" / "user_activity.csv"
 output_path.parent.mkdir(exist_ok=True)
