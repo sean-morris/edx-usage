@@ -62,8 +62,27 @@ historical_24h_json = json.dumps(historical["active_users_24h"].tolist())
 # Daily snapshot: 30-day chart + yesterday summary
 # ---------------------------------------------------------------------------
 today_str = date.today().isoformat()
+yesterday_str = (date.today() - timedelta(days=1)).isoformat()
 cutoff_30d = (date.today() - timedelta(days=30)).isoformat()
 
+# Yesterday's active users come directly from user_activity.csv — no waiting
+# for snapshots. running_servers comes from snapshots if available.
+summary_date = yesterday_str
+summary_sections = {
+    s: int((activity[f"{s} last activity"] == yesterday_str).sum())
+    if f"{s} last activity" in activity.columns else 0
+    for s in SECTIONS
+}
+
+# running_servers from most recent snapshot before today (may be 0 until first run)
+summary_running = 0
+if not snapshots.empty and "date" in snapshots.columns:
+    prev = snapshots[snapshots["date"] < today_str]
+    if not prev.empty:
+        latest = prev.iloc[-1]
+        summary_running = int(latest["running_servers"]) if pd.notna(latest.get("running_servers")) else 0
+
+# 30-day chart from snapshots
 if not snapshots.empty and "date" in snapshots.columns:
     recent = snapshots[snapshots["date"] >= cutoff_30d].copy()
     active_cols = [f"{s} active" for s in SECTIONS if f"{s} active" in recent.columns]
@@ -71,27 +90,10 @@ if not snapshots.empty and "date" in snapshots.columns:
     daily_dates = recent["date"].tolist()
     daily_active = recent["total_active"].tolist()
     daily_running = recent["running_servers"].fillna(0).tolist() if "running_servers" in recent.columns else [0] * len(daily_dates)
-
-    prev = snapshots[snapshots["date"] < today_str]
-    if not prev.empty:
-        latest = prev.iloc[-1]
-        summary_date = str(latest["date"])
-        summary_running = int(latest["running_servers"]) if pd.notna(latest.get("running_servers")) else 0
-        summary_sections = {
-            s: int(latest[f"{s} active"]) if f"{s} active" in latest.index and pd.notna(latest[f"{s} active"]) else 0
-            for s in SECTIONS
-        }
-    else:
-        summary_date = None
-        summary_running = 0
-        summary_sections = {s: 0 for s in SECTIONS}
 else:
     daily_dates = []
     daily_active = []
     daily_running = []
-    summary_date = None
-    summary_running = 0
-    summary_sections = {s: 0 for s in SECTIONS}
 
 daily_dates_json = json.dumps(daily_dates)
 daily_active_json = json.dumps(daily_active)
@@ -184,7 +186,7 @@ html = f"""<!DOCTYPE html>
         <div class="stat-row">
           <div class="stat-box">
             <span class="stat-value" id="stat-running">--</span>
-            <span class="stat-label">Est. Peak Concurrent Servers</span>
+            <span class="stat-label">Est. Peak Concurrent Users</span>
           </div>
           <div class="stat-box">
             <span class="stat-value" id="stat-total">--</span>
@@ -288,25 +290,20 @@ html = f"""<!DOCTYPE html>
     // -----------------------------------------------------------------------
     // 2. Yesterday's Summary
     // -----------------------------------------------------------------------
-    if (summary.date) {{
-      document.getElementById("summary-no-data").style.display = "none";
-      document.getElementById("summary-content").style.display = "";
-      document.getElementById("stat-running").textContent = summary.running_servers;
-      const totalActive = Object.values(summary.sections).reduce((a, b) => a + b, 0);
-      document.getElementById("stat-total").textContent = totalActive;
-      document.getElementById("summary-date-label").textContent = "Data from " + summary.date;
-      const tbody = document.getElementById("summary-body");
-      const rows = [];
-      for (const [course, sections] of Object.entries(COURSES)) {{
-        for (const section of sections) {{
-          rows.push(`<tr><td>${{course}}</td><td>${{section}}</td><td>${{summary.sections[section] || 0}}</td></tr>`);
-        }}
+    document.getElementById("summary-no-data").style.display = "none";
+    document.getElementById("summary-content").style.display = "";
+    document.getElementById("stat-running").textContent = summary.running_servers || "—";
+    const totalActive = Object.values(summary.sections).reduce((a, b) => a + b, 0);
+    document.getElementById("stat-total").textContent = totalActive;
+    document.getElementById("summary-date-label").textContent = "Data from " + summary.date;
+    const tbody = document.getElementById("summary-body");
+    const rows = [];
+    for (const [course, sections] of Object.entries(COURSES)) {{
+      for (const section of sections) {{
+        rows.push(`<tr><td>${{course}}</td><td>${{section}}</td><td>${{summary.sections[section] || 0}}</td></tr>`);
       }}
-      tbody.innerHTML = rows.join("");
-    }} else {{
-      document.getElementById("summary-no-data").style.display = "";
-      document.getElementById("summary-content").style.display = "none";
     }}
+    tbody.innerHTML = rows.join("");
 
     // -----------------------------------------------------------------------
     // 3. 30-day Daily Users + Concurrent chart
