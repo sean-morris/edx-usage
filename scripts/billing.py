@@ -25,10 +25,12 @@ query = f"""
 SELECT
   DATE(usage_start_time) AS date,
   service.description AS service,
-  ROUND(SUM(cost), 2) AS cost
+  ROUND(SUM(cost + IFNULL(
+    (SELECT SUM(c.amount) FROM UNNEST(credits) AS c), 0
+  )), 2) AS cost
 FROM `{PROJECT}.{BILLING_DATASET}.{BILLING_TABLE}`
 WHERE DATE(usage_start_time) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
-  AND (project.id = '{PROJECT}' OR project.id IS NULL)
+  AND project.id = '{PROJECT}'
 GROUP BY 1, 2
 ORDER BY 1
 """
