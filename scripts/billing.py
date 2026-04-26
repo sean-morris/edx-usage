@@ -23,13 +23,14 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 
 query = f"""
 SELECT
-  DATE(usage_start_time) AS date,
+  DATE(usage_start_time, "America/Los_Angeles") AS date,
   service.description AS service,
   ROUND(SUM(cost + IFNULL(
     (SELECT SUM(c.amount) FROM UNNEST(credits) AS c), 0
   )), 2) AS cost
 FROM `{PROJECT}.{BILLING_DATASET}.{BILLING_TABLE}`
-WHERE DATE(usage_start_time) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+WHERE DATE(usage_start_time, "America/Los_Angeles") >= DATE_SUB(
+    CURRENT_DATE("America/Los_Angeles"), INTERVAL 30 DAY)
   AND project.id = '{PROJECT}'
 GROUP BY 1, 2
 ORDER BY 1
