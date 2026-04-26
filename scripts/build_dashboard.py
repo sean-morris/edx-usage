@@ -38,6 +38,9 @@ historical = pd.read_csv(DATA_DIR / "hub_historical_users.csv")
 snapshot_path = DATA_DIR / "daily_snapshots.csv"
 snapshots = pd.read_csv(snapshot_path) if snapshot_path.exists() else pd.DataFrame()
 
+concurrent_path = DATA_DIR / "concurrent_users.csv"
+concurrent = pd.read_csv(concurrent_path) if concurrent_path.exists() else pd.DataFrame(columns=["date", "peak_concurrent"])
+
 # ---------------------------------------------------------------------------
 # Monthly chart JSON
 # ---------------------------------------------------------------------------
@@ -74,13 +77,12 @@ summary_sections = {
     for s in SECTIONS
 }
 
-# running_servers from most recent snapshot before today (may be 0 until first run)
+# peak concurrent from yesterday's log reconstruction (may be 0 until first run)
 summary_running = 0
-if not snapshots.empty and "date" in snapshots.columns:
-    prev = snapshots[snapshots["date"] < today_str]
-    if not prev.empty:
-        latest = prev.iloc[-1]
-        summary_running = int(latest["running_servers"]) if pd.notna(latest.get("running_servers")) else 0
+if not concurrent.empty and "date" in concurrent.columns:
+    row = concurrent[concurrent["date"] == yesterday_str]
+    if not row.empty:
+        summary_running = int(row.iloc[-1]["peak_concurrent"])
 
 # 30-day chart: active users from user_activity.csv, concurrent from snapshots
 activity_cols = [c for c in activity.columns if "last activity" in c]
@@ -90,13 +92,12 @@ for d in daily_dates:
     count = int((activity[activity_cols] == d).any(axis=1).sum())
     daily_active.append(count)
 
-# running_servers from snapshots where available, else 0
-snapshot_running = {}
-if not snapshots.empty and "date" in snapshots.columns:
-    for _, row in snapshots[snapshots["date"] >= cutoff_30d].iterrows():
-        val = row.get("running_servers", 0)
-        snapshot_running[str(row["date"])] = int(val) if pd.notna(val) else 0
-daily_running = [snapshot_running.get(d, 0) for d in daily_dates]
+# peak concurrent from log reconstruction where available, else 0
+concurrent_by_date = {}
+if not concurrent.empty and "date" in concurrent.columns:
+    for _, row in concurrent[concurrent["date"] >= cutoff_30d].iterrows():
+        concurrent_by_date[str(row["date"])] = int(row["peak_concurrent"]) if pd.notna(row["peak_concurrent"]) else 0
+daily_running = [concurrent_by_date.get(d, 0) for d in daily_dates]
 
 daily_dates_json = json.dumps(daily_dates)
 daily_active_json = json.dumps(daily_active)
@@ -214,7 +215,7 @@ html = f"""<!DOCTYPE html>
 
   <!-- 3. 30-day Daily Users + Concurrent chart -->
   <div class="card">
-    <h2>Last 30 Days: Daily Active Users &amp; Peak Concurrent Servers</h2>
+    <h2>Last 30 Days: Daily Active Users &amp; Peak Concurrent Users</h2>
     <div id="daily-no-data" class="no-data" style="display:none">No snapshot data yet — will appear after the next pipeline run.</div>
     <canvas id="daily-chart"></canvas>
   </div>
