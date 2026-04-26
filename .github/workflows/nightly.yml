@@ -2,7 +2,7 @@ name: Nightly Dashboard Update
 
 on:
   schedule:
-    - cron: "0 6 * * *"   # 6am UTC every night (10pm PT / 11pm PDT)
+    - cron: "0 14 * * *"   # 2pm UTC every night at 6am PST / 7am PDT
   workflow_dispatch:        # allow manual trigger from GitHub UI
 
 jobs:
