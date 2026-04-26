@@ -6,6 +6,9 @@ __pycache__/
 # Intermediate output files (regenerated each run, not needed in repo)
 output/
 
+# Generated dashboard — owned by the GH Action, not local runs
+docs/index.html
+
 # data/ is intentionally tracked - it holds the persistent monthly_activity.csv
 
 # Environment
