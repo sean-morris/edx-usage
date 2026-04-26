@@ -195,7 +195,7 @@ html = f"""<!DOCTYPE html>
         <div class="stat-row">
           <div class="stat-box">
             <span class="stat-value" id="stat-running">--</span>
-            <span class="stat-label">Est. Peak Concurrent Users</span>
+            <span class="stat-label">Largest Number Concurrent Users</span>
           </div>
           <div class="stat-box">
             <span class="stat-value" id="stat-total">--</span>
